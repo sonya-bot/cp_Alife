@@ -17,7 +17,7 @@ plt.style.available
 # visualizer = SwarmVisualizer()
 
 # シミュレーションパラメタ
-N = 100
+N = 10
 # 力の強さ
 COHESION_FORCE = 0.008
 SEPARATION_FORCE = 0.4
