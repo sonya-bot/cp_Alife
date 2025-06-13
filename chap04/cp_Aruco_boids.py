@@ -22,7 +22,7 @@ import cv2
 N = 10
 # 力の強さ
 COHESION_FORCE = 0.008
-SEPARATION_FORCE = 0.5
+SEPARATION_FORCE = 0.4
 ALIGNMENT_FORCE = 0.06
 # 力の働く距離
 COHESION_DISTANCE = 0.5
@@ -51,8 +51,8 @@ fig, ax = plt.subplots()
 
 # ARUCOマーカーの生成
 # マーカーサイズに関する設定
-BASE_PIXEL_SIZE = 150   # 土台となる白い正方形のサイズ
 ARUCO_PIXEL_SIZE = 100  # マーカーのサイズ
+BASE_PIXEL_SIZE = int(ARUCO_PIXEL_SIZE * 1.5)  # 土台となる白い正方形のサイズ
 ARUCO_DRAW_SIZE = 0.4   # 画面に描画する際のサイズ
 
 
@@ -173,8 +173,8 @@ def update(frame):
         # interpolation='nearest'を追加して、マーカーをくっきり表示
         ax.imshow(marker_img, cmap='gray', extent=extent, interpolation='nearest')
 
-    ax.set_xlim(-2.0, 2.0) # 描画範囲の設定
-    ax.set_ylim(-2.0, 2.0) # 描画範囲の設定
+    ax.set_xlim(-3.0, 3.0) # 描画範囲の設定
+    ax.set_ylim(-3.0, 3.0) # 描画範囲の設定
     ax.set_aspect('equal', adjustable='box')
     plt.axis('off')  # 軸を非表示にする
     plt.pause(0.01) # 短い時間停止して描画を更新
