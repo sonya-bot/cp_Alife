@@ -4,20 +4,13 @@
 import sys, os
 sys.path.append(os.pardir)  # 親ディレクトリのファイルをインポートするための設定
 import numpy as np
-# from alifebook_lib.visualizers import SwarmVisualizer
-import matplotlib.pyplot as plt
-import matplotlib.animation as animation
-from cv2 import aruco
-import random
-plt.style.available
-
-
+from alifebook_lib.visualizers import SwarmVisualizer
 
 # visualizerの初期化 (Appendix参照)
-# visualizer = SwarmVisualizer()
+visualizer = SwarmVisualizer()
 
 # シミュレーションパラメタ
-N = 100
+N = 256
 # 力の強さ
 COHESION_FORCE = 0.008
 SEPARATION_FORCE = 0.4
@@ -37,54 +30,17 @@ MAX_VEL = 0.03
 BOUNDARY_FORCE = 0.001
 
 # 位置と速度
-# x = np.random.rand(N, 3) * 2 - 1
-# v = (np.random.rand(N, 3) * 2 - 1 ) * MIN_VEL
-# 位置と速度(2次元化)
-x = np.random.rand(N, 2) * 2 - 1
-v = (np.random.rand(N, 2) * 2 - 1 ) * MIN_VEL
+x = np.random.rand(N, 3) * 2 - 1
+v = (np.random.rand(N, 3) * 2 - 1 ) * MIN_VEL
 
-#matplotlibでの可視化用
-plt.ion()  # インタラクティブモードをオンにする
-fig, ax = plt.subplots()
+# cohesion, separation, alignmentの３つの力を代入する変数
+dv_coh = np.empty((N,3))
+dv_sep = np.empty((N,3))
+dv_ali = np.empty((N,3))
+# 境界で働く力を代入する変数
+dv_boundary = np.empty((N,3))
 
-# --- START MODIFICATION ---
-# マーカー生成処理をループの外に移動
-# マーカーサイズに関する設定
-ARUCO_PIXEL_SIZE = 100 # マーカー生成時のピクセルサイズ
-ARUCO_DRAW_SIZE = 0.3  # 画面に描画する際のサイズ
-
-# ArUco辞書の準備
-dict_aruco=aruco.getPredefinedDictionary(aruco.DICT_4X4_50)
-
-# マーカー画像を保存するリスト
-img = []
-ids = []
-# 各Boidに固有のIDを一度だけ割り当てる
-for i in range(N):
-    marker_id = random.randint(0, 49)  # 0から49の範囲でランダムなIDを生成
-    marker_img = aruco.generateImageMarker(dict_aruco, marker_id, ARUCO_PIXEL_SIZE)
-    ids.append(marker_id)
-    img.append(marker_img)
-print(ids)  # 各BoidのIDを表示
-# --- END MODIFICATION ---
-
-def update(frame):
-    global x, v, dv_coh, dv_sep, dv_ali, dv_boundary
-# for i in range(1000):
-# # cohesion, separation, alignmentの３つの力を代入する変数
-# dv_coh = np.empty((N,3))
-# dv_sep = np.empty((N,3))
-# dv_ali = np.empty((N,3))
-# # 境界で働く力を代入する変数
-# dv_boundary = np.empty((N,3))
-    # cohesion, separation, alignmentの３つの力を代入する変数(2次元化)
-    dv_coh = np.empty((N,2))
-    dv_sep = np.empty((N,2))
-    dv_ali = np.empty((N,2))
-    # 境界で働く力を代入する変数(2次元化)
-    dv_boundary = np.empty((N,2))
-
-# while visualizer:
+while visualizer:
     for i in range(N):
         # ここで計算する個体の位置と速度
         x_this = x[i]
@@ -115,39 +71,4 @@ def update(frame):
             v[i] = MAX_VEL * v[i] / v_abs
     # 位置のアップデート
     x += v
-    # visualizer.update(x, v)
-
-
-
-    # matplotlibでの可視化
-    ax.clear()  # 前のフレームを消去
-        
-    # 各Boidの位置にマーカー画像を描画する
-    #aruco辞書の生成
-    dict_aruco=aruco.getPredefinedDictionary(aruco.DICT_4X4_50)
-
-    #マーカーサイズ
-    size_mark=10
-
-    #arucoマーカーの生成(10個)
-    for i in range(N):
-        pos = x[i]
-        marker_img = img[i]
-        
-        size = ARUCO_DRAW_SIZE / 2
-        extent = [pos[0] - size, pos[0] + size, pos[1] - size, pos[1] + size]
-        
-        # interpolation='nearest'を追加して、マーカーをくっきり表示
-        ax.imshow(marker_img, cmap='gray', extent=extent, interpolation='nearest')
-
-    ax.set_xlim(-2.0, 2.0) # 描画範囲の設定
-    ax.set_ylim(-2.0, 2.0) # 描画範囲の設定
-    ax.set_aspect('equal', adjustable='box')
-    plt.axis('off')  # 軸を非表示にする
-    plt.pause(0.01) # 短い時間停止して描画を更新
-# アニメーションを生成
-ani = animation.FuncAnimation(fig, update, frames=1000, interval=20)
-
-plt.ioff()  # インタラクティブモードをオフにする
-ani.save("animation.mp4", writer="ffmpeg")
-plt.show()  # 最後に全てのフレームを表示  
+    visualizer.update(x, v)
