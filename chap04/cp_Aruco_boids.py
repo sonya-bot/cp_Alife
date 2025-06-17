@@ -12,7 +12,7 @@ from cv2 import aruco
 import random
 plt.style.available
 import cv2
-
+import csv
 
 
 # visualizerの初期化 (Appendix参照)
@@ -62,20 +62,24 @@ dict_aruco=aruco.getPredefinedDictionary(aruco.DICT_4X4_50)
 # マーカー画像を保存するリスト
 img = []
 ids = []
+
+# マーカーの軌跡を保存するリスト
+boids_trajectory = [[] for _ in range(N)]
+
 # 各Boidに固有のIDを一度だけ割り当てる
 for i in range(N):
     marker_id = random.randint(0, 49)  # 0から49の範囲でランダムなIDを生成
     # marker_img = aruco.generateImageMarker(dict_aruco, marker_id, ARUCO_PIXEL_SIZE)
     ids.append(marker_id)
     # img.append(marker_img)
-     # 1. 真っ白な土台画像を作成
+     # 真っ白な土台画像を作成
     base_img = np.ones((BASE_PIXEL_SIZE, BASE_PIXEL_SIZE), dtype=np.uint8) * 255
-    # 2. ArUcoマーカーを生成
+    # ArUcoマーカーを生成
     marker_img = aruco.generateImageMarker(dict_aruco, marker_id, ARUCO_PIXEL_SIZE)
-    # 3. 土台の中央にマーカーを貼り付け
+    # 土台の中央にマーカーを貼り付け
     offset = (BASE_PIXEL_SIZE - ARUCO_PIXEL_SIZE) // 2
     base_img[offset:offset+ARUCO_PIXEL_SIZE, offset:offset+ARUCO_PIXEL_SIZE] = marker_img
-    # 4. 完成した「土台付きマーカー」をリストに追加
+    # 完成した「土台付きマーカー」をリストに追加
     img.append(base_img)
 print(ids)  # 各BoidのIDを表示
 # --- END MODIFICATION ---
@@ -144,6 +148,7 @@ def update(frame):
     # 位置のアップデート
     x += v
     # visualizer.update(x, v)
+    # print(f"Frame {frame}: Positions: {x}, Velocities: {v}")
 
     # 個体を進行方向に回転
     rotated_imgs = []
@@ -173,6 +178,20 @@ def update(frame):
         # interpolation='nearest'を追加して、マーカーをくっきり表示
         ax.imshow(marker_img, cmap='gray', extent=extent, interpolation='nearest')
 
+    # 軌跡の保存・描画
+    for i in range(N):
+        boids_state = {
+            "frame": frame,
+            "id": ids[i],
+            "position": x[i].tolist(),
+            "velocity": v[i].tolist()
+        }
+        boids_trajectory[i].append(boids_state)
+    # 軌跡を描画
+        trajectory = np.array([state["position"] for state in boids_trajectory[i]])
+        if len(trajectory) > 1:
+            ax.plot(trajectory[:, 0], trajectory[:, 1], color='gray', alpha=0.5, linewidth=0.5)
+
     ax.set_xlim(-3.0, 3.0) # 描画範囲の設定
     ax.set_ylim(-3.0, 3.0) # 描画範囲の設定
     ax.set_aspect('equal', adjustable='box')
@@ -184,3 +203,24 @@ ani = animation.FuncAnimation(fig, update, frames=1000, interval=20)
 plt.ioff()  # インタラクティブモードをオフにする
 ani.save("animation.mp4", writer="ffmpeg")
 # plt.show()  # 最後に全てのフレームを表示  
+
+# CSVファイルに保存
+with open('boids_trajectory.csv', 'w', encoding='utf-8', newline='') as f:
+    header = ['frame', 'id', 'position', 'velocity']
+    writer = csv.writer(f)
+    writer.writerow(header)
+    for boid_data_list in boids_trajectory:
+        for state in boid_data_list:
+            # 辞書から値を取り出して一行分のデータを作成
+            row = [
+                state['frame'],
+                state['id'],
+                state['position'][0],  # x座標
+                state['position'][1],  # y座標
+                state['velocity'][0],  # x速度
+                state['velocity'][1]   # y速度
+            ]
+            writer.writerow(row)
+
+# CSVファイルの保存完了メッセージ
+print("Boids trajectory saved to 'boids_trajectory.csv'.")
