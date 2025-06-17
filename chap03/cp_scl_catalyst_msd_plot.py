@@ -35,10 +35,7 @@ def calculate_average_msd(filename, num_runs=10, max_lag_ratio=1.0):
     try:
         df = pd.read_csv(filename)
     except FileNotFoundError:
-<<<<<<< HEAD
-=======
         # ファイルが見つからない場合、ここでエラーメッセージを出してNoneを返す
->>>>>>> chap03_update
         print(f"エラー: ファイルが見つかりません - {filename}")
         return None, None
 
@@ -62,11 +59,7 @@ def calculate_average_msd(filename, num_runs=10, max_lag_ratio=1.0):
             
         lag_times = np.arange(1, max_lag)
         msds = np.zeros(len(lag_times))
-<<<<<<< HEAD
-        
-=======
         # 各ラグタイムに対してMSDを計算
->>>>>>> chap03_update
         for j, dt in enumerate(lag_times):
             diff = trajectory[dt:] - trajectory[:-dt]
             squared_disp = np.sum(diff**2, axis=1)
@@ -94,17 +87,6 @@ def calculate_average_msd(filename, num_runs=10, max_lag_ratio=1.0):
 
 # --- メイン処理 ---
 files_to_analyze = {
-<<<<<<< HEAD
-    '初期状態': 'simulation_results(initial).csv',
-}
-
-# --- START MODIFICATION ---
-# グラフ描画の準備 (figsizeを横長に調整)
-plt.style.use('seaborn-v0_8-whitegrid')
-fig, ax = plt.subplots(figsize=(10, 6))
-
-# 各ファイルについてMSDを計算しプロット
-=======
     'initial': 'simulation_results(initial).csv',
     'ex_1': 'simulation_results(ex_1).csv',
     'ex_2': 'simulation_results(ex_2).csv'
@@ -130,27 +112,11 @@ plt.style.use('seaborn-v0_8-whitegrid')
 
 ref_data = None
 plot_data_exists = False
->>>>>>> chap03_update
 for label, filename in files_to_analyze.items():
     print(f"分析中: {filename}")
     lag_times, avg_msd = calculate_average_msd(filename)
     
     if lag_times is not None and avg_msd is not None:
-<<<<<<< HEAD
-        # 描画関数を ax.loglog から ax.semilogy に変更
-        ax.semilogy(lag_times, avg_msd, 'o-', markersize=4, alpha=0.8, label=f'MSD ({label})')
-
-# グラフの体裁を片対数グラフ用に変更
-ax.set_xlabel('Lag Time, Δt (x10 steps)', fontsize=12)
-ax.set_ylabel('Mean Squared Displacement (MSD) [log-scale]', fontsize=12)
-ax.set_title('触媒のMSD比較 (片対数グラフ)', fontsize=14)
-ax.legend()
-# 片対数グラフでは参照線とaxis('equal')は意味合いが変わるため、ここでは省略します
-ax.grid(True, which="both", ls="--") # グリッド線を表示
-
-plt.show()
-# --- END MODIFICATION ---
-=======
         # --- START MODIFICATION ---
         # グラフの種類に応じてプロット関数を使い分ける
         if USE_LOGLOG_PLOT:
@@ -184,4 +150,3 @@ if plot_data_exists:
 ax.grid(True, which="both", ls="--")
 
 plt.show()
->>>>>>> chap03_update
