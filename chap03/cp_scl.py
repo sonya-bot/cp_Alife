@@ -10,11 +10,13 @@ from cp_scl_interaction_functions import *
 データの取得、計算を関数化して呼び出し
 """
 from cp_scl_datas import get_catalyst_positions, get_catalyst_manhattan_distances
+import csv
 
 
 
 # visualizerの初期化 (Appendix参照)
-visualizer = SCLVisualizer()
+# visualizer = SCLVisualizer()
+VISUALIZE = False  # 可視化を行うかどうか
 
 SPACE_SIZE = 16
 
@@ -80,16 +82,25 @@ for x0, y0, x1, y1 in INITIAL_BONDED_LINK_POSITIONS:
 """
 # ---- ここから追記 ----
 def catalyst_position_history():
+        
+    VISUALIZE = False
+    
+    if VISUALIZE:
+        visualizer = SCLVisualizer()
+    else:
+        # 描画しない場合は、visualizerをNone(空)にしておく
+        visualizer = None
+
     catalyst_positions = []  # 触媒の座標履歴リスト
     catalyst_distances = []  # 触媒の初期位置からの距離履歴リスト
     RECORD_INTERVAL = 10    # 何ステップごとに記録するか
     step = 0
-    max_steps = 100000
+    max_steps = 10000
     # 初期触媒位置を保存（複数触媒対応）
     initial_catalyst_positions = list(INITIAL_CATALYST_POSITIONS)
 # ---- ここまで追記 ----
 
-    while visualizer and step < max_steps:
+    while step < max_steps:
         # 移動
         moved = np.full(particles.shape, False, dtype=bool)
         for x in range(SPACE_SIZE):
@@ -128,10 +139,56 @@ def catalyst_position_history():
         # step += 1
         # --- ここまで追記 ---
 
-        visualizer.update(particles)
+        # visualizer.update(particles)
+        # 可視化を行う場合、visualizerに現在のparticlesを更新
+        if visualizer:
+            visualizer.update(particles)
         step += 1
 
-    np.savez('catalyst_data.npz', positions=catalyst_positions, distances=catalyst_distances)
+    formatted_data = []
+    for i, _ in enumerate(initial_catalyst_positions):
+        for step_index, (positions, distances) in enumerate(zip(catalyst_positions, catalyst_distances)):
+            if i < len(positions):
+                sim_step = step_index * RECORD_INTERVAL
+                pos_x, pos_y = positions[i]
+                distance = distances[i]
+                formatted_data.append([sim_step, i, pos_x, pos_y, distance])
+    
+    return formatted_data
 
 if __name__ == '__main__':
-    catalyst_position_history()
+    # --- START MODIFICATION ---
+    # メインの処理をご提示の形式に合わせて、csvモジュールで書き出すように変更
+
+    num_runs = 10
+    output_filename = 'simulation_results.csv'
+    header = ['Run', 'Step', 'Catalyst_ID', 'Position_X', 'Position_Y', 'Manhattan_Distance']
+
+    print(f"Starting {num_runs} simulation runs...")
+
+    # 'with open'でファイルを開き、処理が終わったら自動で閉じる
+    # newline='' は、CSV書き込み時に不要な空行が入るのを防ぐためのおまじない
+    with open(output_filename, 'w', encoding='utf-8', newline='') as f:
+        writer = csv.writer(f)
+
+        # 最初にヘッダー（列名）を書き込む
+        writer.writerow(header)
+
+        # シミュレーションを指定回数ループ実行
+        for i in range(num_runs):
+            run_number = i + 1
+            print(f"--- Running simulation {run_number}/{num_runs} ---")
+
+            # 1回分のシミュレーションを実行し、結果リストを取得
+            simulation_data = catalyst_position_history()
+
+            # 取得したデータを1行ずつループで処理
+            for row in simulation_data:
+                # [実行回番号] と [ステップ, ID, X, Y, 距離] を結合して1行分のデータを作成
+                csv_row = [run_number] + row
+                # 作成した1行をファイルに書き込む
+                writer.writerow(csv_row)
+
+    print(f"--- All simulations finished. Results saved to '{output_filename}' ---")
+    # --- END MODIFICATION ---
+
