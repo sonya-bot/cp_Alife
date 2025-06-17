@@ -34,8 +34,13 @@ group_colors = [COLORS[i % len(COLORS)] for i in range(N_GROUPS)]
 
 # 力の強さ
 COHESION_FORCE = 0.008
-SEPARATION_FORCE = 0.5
+SEPARATION_FORCE = 0.05
 ALIGNMENT_FORCE = 0.06
+# グループ間に働く力の強さ
+SAME_GROUP_COHESION_FORCE = COHESION_FORCE * 1
+OTHER_GROUP_COHESION_FORCE = COHESION_FORCE * 1
+SAME_GROUP_SEPARATION_FORCE = SEPARATION_FORCE * 1
+OTHER_GROUP_SEPARATION_FORCE = SEPARATION_FORCE * 1
 # 力の働く距離
 COHESION_DISTANCE = 0.5
 SEPARATION_DISTANCE = 0.4
@@ -124,6 +129,14 @@ def update(frame):
     
 # while visualizer:
     for i in range(N):
+        # 個体が属するグループの識別
+        group_this = group_ids[i]
+        group_that = np.delete(group_ids, i, axis=0)
+
+        # グループごとにマスク
+        same_group = (group_that == group_this)
+        other_group = (group_that != group_this)
+
         # ここで計算する個体の位置と速度
         x_this = x[i]
         v_this = v[i]
@@ -141,12 +154,22 @@ def update(frame):
         # np.clipで値を-1.0から1.0の範囲に強制的に収める
         angle = np.arccos(np.clip(cos_vals, -1.0, 1.0))
         # 各力が働く範囲内の個体のリスト
-        coh_agents_x = x_that[ (distance < COHESION_DISTANCE) & (angle < COHESION_ANGLE) ]
-        sep_agents_x = x_that[ (distance < SEPARATION_DISTANCE) & (angle < SEPARATION_ANGLE) ]
+        coh_same_agents_x = x_that[ (distance < COHESION_DISTANCE) & (angle < COHESION_ANGLE) & same_group]
+        coh_other_agents_x = x_that[ (distance < COHESION_DISTANCE) & (angle < COHESION_ANGLE) & other_group]
+        sep_same_agents_x = x_that[ (distance < SEPARATION_DISTANCE) & (angle < SEPARATION_ANGLE) & same_group]
+        sep_other_agents_x = x_that[ (distance < SEPARATION_DISTANCE) & (angle < SEPARATION_ANGLE) & other_group]
         ali_agents_v = v_that[ (distance < ALIGNMENT_DISTANCE) & (angle < ALIGNMENT_ANGLE) ]
         # 各力の計算
-        dv_coh[i] = COHESION_FORCE * (np.average(coh_agents_x, axis=0) - x_this) if (len(coh_agents_x) > 0) else 0
-        dv_sep[i] = SEPARATION_FORCE * np.sum(x_this - sep_agents_x, axis=0) if (len(sep_agents_x) > 0) else 0
+        # dv_coh[i] = COHESION_FORCE * (np.average(coh_agents_x, axis=0) - x_this) if (len(coh_agents_x) > 0) else 0
+        # dv_sep[i] = SEPARATION_FORCE * (np.sum(x_this - sep_agents_x, axis=0) if (len(sep_agents_x) > 0) else 0)
+        force_coh_from_same = SAME_GROUP_COHESION_FORCE * (np.average(coh_same_agents_x, axis=0) - x_this) if len(coh_same_agents_x) > 0 else 0
+        force_coh_from_other = OTHER_GROUP_COHESION_FORCE * (np.average(coh_other_agents_x, axis=0) - x_this) if len(coh_other_agents_x ) > 0 else 0
+        force_sep_from_same = SAME_GROUP_SEPARATION_FORCE * np.sum(x_this - sep_same_agents_x, axis=0) if len(sep_same_agents_x) > 0 else 0
+        force_sep_from_other = OTHER_GROUP_SEPARATION_FORCE * np.sum(x_this - sep_other_agents_x, axis=0) if len(sep_other_agents_x) > 0 else 0
+        # 結合力：同じ仲間からの力はブーストし、違う仲間からの力は基本値を適用
+        dv_coh[i] = force_coh_from_same + force_coh_from_other
+        # 分離力：違う仲間からの力はブーストし、同じ仲間からの力は基本値を適用
+        dv_sep[i] = force_sep_from_other + force_sep_from_same
         dv_ali[i] = ALIGNMENT_FORCE * (np.average(ali_agents_v, axis=0) - v_this) if (len(ali_agents_v) > 0) else 0
         dist_center = np.linalg.norm(x_this) # 原点からの距離
         dv_boundary[i] = - BOUNDARY_FORCE * x_this * (dist_center - 1) / dist_center if (dist_center > 1) else 0
@@ -190,14 +213,15 @@ def update(frame):
         # interpolation='nearest'を追加して、マーカーをくっきり表示
         ax.imshow(marker_img, cmap='gray', extent=extent, interpolation='nearest')
 
-    ax.set_xlim(-3.0, 3.0) # 描画範囲の設定
-    ax.set_ylim(-3.0, 3.0) # 描画範囲の設定
+    ax.set_xlim(-4.0, 4.0) # 描画範囲の設定
+    ax.set_ylim(-4.0, 4.0) # 描画範囲の設定
     ax.set_aspect('equal', adjustable='box')
     plt.axis('off')  # 軸を非表示にする
     plt.pause(0.01) # 短い時間停止して描画を更新
 # アニメーションを生成
-ani = animation.FuncAnimation(fig, update, frames=1000, interval=20)
+ani = animation.FuncAnimation(fig, update, frames=None, interval=20)
 
-plt.ioff()  # インタラクティブモードをオフにする
+# plt.ioff()  # インタラクティブモードをオフにする
+# アニメーションを保存しない場合は以下の行をコメントアウト
 ani.save("animation.mp4", writer="ffmpeg")
-# plt.show()  # 最後に全てのフレームを表示  
+plt.show()  # 最後に全てのフレームを表示  
