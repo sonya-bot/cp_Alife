@@ -2,9 +2,17 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import sys
-import platform # OSを判定するためにインポート
+import platform
 
 # --- START MODIFICATION ---
+# ◆◆◆ 設定箇所 ◆◆◆
+# グラフの種類をここで切り替えます
+# True:  両対数グラフ (傾きで拡散の種類を分析するのに適しています)
+# False: 片対数グラフ (縦軸のみ対数。移動距離の大きさの変化を見やすいです)
+USE_LOGLOG_PLOT = True
+# --- END MODIFICATION ---
+
+
 # 【文字化け対策】日本語フォントを設定
 try:
     if platform.system() == 'Windows':
@@ -17,10 +25,9 @@ try:
 except Exception as e:
     print(f"日本語フォントの設定中にエラーが発生しました: {e}")
     print("グラフの日本語が文字化けする可能性があります。")
-# --- END MODIFICATION ---
 
 
-def calculate_average_msd(filename, num_runs=10, max_lag_ratio=0.25):
+def calculate_average_msd(filename, num_runs=10, max_lag_ratio=1.0):
     """
     CSVファイルを読み込み、ファイル内の全実行回数にわたる
     触媒の平均MSD（Mean Squared Displacement）を計算する。
@@ -52,7 +59,7 @@ def calculate_average_msd(filename, num_runs=10, max_lag_ratio=0.25):
             
         lag_times = np.arange(1, max_lag)
         msds = np.zeros(len(lag_times))
-        
+        # 各ラグタイムに対してMSDを計算
         for j, dt in enumerate(lag_times):
             diff = trajectory[dt:] - trajectory[:-dt]
             squared_disp = np.sum(diff**2, axis=1)
@@ -80,33 +87,66 @@ def calculate_average_msd(filename, num_runs=10, max_lag_ratio=0.25):
 
 # --- メイン処理 ---
 files_to_analyze = {
-    '初期状態': 'simulation_results(initial).csv',
-    '実験1 (膜あり)': 'simulation_results(ex_1).csv'
+    'initial': 'simulation_results(initial).csv',
+    'ex_1': 'simulation_results(ex_1).csv',
+    'ex_2': 'simulation_results(ex_2).csv'
 }
 
-plt.style.use('seaborn-v0_8-whitegrid')
-fig, ax = plt.subplots(figsize=(10, 6))
+# --- START MODIFICATION ---
+# グラフの種類に応じて設定を分岐
+if USE_LOGLOG_PLOT:
+    # --- 両対数グラフ用の設定 ---
+    fig, ax = plt.subplots(figsize=(8, 8))
+    plot_title = 'Catalyst MSD Comparison (Log-Log Plot)'
+    xlabel = 'Lag Time, t (x10 steps) [log-scale]'
+    ylabel = 'Mean Squared Displacement (MSD) [log-scale]'
+else:
+    # --- 片対数グラフ用の設定 ---
+    fig, ax = plt.subplots(figsize=(10, 6))
+    plot_title = 'catalyst_MSD (semilog_scale)'
+    xlabel = 'Steps, t (x10 steps)'
+    ylabel = 'Mean Squared Displacement (MSD) [log-scale]'
 
-plot_data_exists = False # プロットするデータがあるかどうかのフラグ
+plt.style.use('seaborn-v0_8-whitegrid')
+# --- END MODIFICATION ---
+
+ref_data = None
+plot_data_exists = False
 for label, filename in files_to_analyze.items():
     print(f"分析中: {filename}")
     lag_times, avg_msd = calculate_average_msd(filename)
     
     if lag_times is not None and avg_msd is not None:
-        ax.semilogy(lag_times, avg_msd, 'o-', markersize=4, alpha=0.8, label=f'MSD ({label})')
+        # --- START MODIFICATION ---
+        # グラフの種類に応じてプロット関数を使い分ける
+        if USE_LOGLOG_PLOT:
+            ax.loglog(lag_times, avg_msd, 'o-', markersize=4, alpha=0.8, label=f'MSD ({label})')
+        else:
+            ax.semilogy(lag_times, avg_msd, 'o-', markersize=4, alpha=0.8, label=f'MSD ({label})')
+        # --- END MODIFICATION ---
+        
         plot_data_exists = True
-
-# グラフの体裁
-ax.set_xlabel('Lag Time, Δt (x10 steps)', fontsize=12)
-ax.set_ylabel('Mean Squared Displacement (MSD) [log-scale]', fontsize=12)
-ax.set_title('触媒のMSD比較 (片対数グラフ)', fontsize=14)
+        if ref_data is None:
+            ref_data = (lag_times, avg_msd)
 
 # --- START MODIFICATION ---
-# データが一つでもプロットされた場合のみ凡例を表示
-if plot_data_exists:
-    ax.legend()
+# グラフの体裁を設定
+ax.set_title(plot_title, fontsize=14)
+ax.set_xlabel(xlabel, fontsize=12)
+ax.set_ylabel(ylabel, fontsize=12)
+
+# 両対数グラフの場合のみ、参照線と軸の調整を行う
+if USE_LOGLOG_PLOT:
+    if ref_data is not None:
+        lag_times_ref, avg_msd_ref = ref_data
+        if len(lag_times_ref) > 10:
+            c = avg_msd_ref[10] / lag_times_ref[10]
+            ax.loglog(lag_times_ref, c * lag_times_ref**1.0, 'r--', label=r'Normal Diffusion ($\alpha=1$)')
+    ax.axis('equal')
 # --- END MODIFICATION ---
 
+if plot_data_exists:
+    ax.legend()
 ax.grid(True, which="both", ls="--")
 
 plt.show()
