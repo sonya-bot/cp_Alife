@@ -82,7 +82,6 @@ for i in range(N):
     # 完成した「土台付きマーカー」をリストに追加
     img.append(base_img)
 print(ids)  # 各BoidのIDを表示
-# --- END MODIFICATION ---
 
 def update(frame):
     global x, v, dv_coh, dv_sep, dv_ali, dv_boundary
@@ -136,7 +135,10 @@ def update(frame):
         dv_sep[i] = SEPARATION_FORCE * np.sum(x_this - sep_agents_x, axis=0) if (len(sep_agents_x) > 0) else 0
         dv_ali[i] = ALIGNMENT_FORCE * (np.average(ali_agents_v, axis=0) - v_this) if (len(ali_agents_v) > 0) else 0
         dist_center = np.linalg.norm(x_this) # 原点からの距離
-        dv_boundary[i] = - BOUNDARY_FORCE * x_this * (dist_center - 1) / dist_center if (dist_center > 1) else 0
+        dist_from_center = 2 #中心から境界までの距離
+        dv_boundary[i] = - BOUNDARY_FORCE * x_this * (dist_center - dist_from_center) / dist_center if (dist_center > dist_from_center) else 0
+        # 境界を表す円を描画
+        circle = plt.Circle((0, 0), dist_from_center, color='blue', fill=False, linestyle='dashed')
     # 速度のアップデートと上限/下限のチェック
     v += dv_coh + dv_sep + dv_ali + dv_boundary
     for i in range(N):
@@ -159,6 +161,7 @@ def update(frame):
 
     # matplotlibでの可視化
     ax.clear()  # 前のフレームを消去
+    ax.add_artist(circle)  # 境界を描画
         
     # 各Boidの位置にマーカー画像を描画する
     #aruco辞書の生成
